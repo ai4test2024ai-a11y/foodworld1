@@ -1,9 +1,11 @@
+import { CITIES } from "./cities";
+import type { City } from "./cities";
 import { COUNTRIES } from "./countries";
 import { CATEGORIES, INGREDIENTS, MEAT_LABELS, SPICE_LABELS } from "./lexicon";
 import { IRAN_FOODS } from "./foodsIran";
 import { WORLD_FOODS } from "./foodsWorld";
 import { IMPOSSIBLE_POOL } from "./impossible";
-import type { AllDifficulty, Country, Food, Lang, LocalizedText, Question } from "./types";
+import type { AllDifficulty, Country, Food, Lang, LocalizedText, Question, Rarity } from "./types";
 
 /**
  * Data repository — the ONLY place UI code should read food/country data from.
@@ -180,4 +182,57 @@ export function deleteCustomQuestion(key: string): void {
 
 export function getScoring(): Partial<Record<AllDifficulty, number>> {
   return overrides.scoring;
+}
+
+/* ── City food system ── */
+
+export function getCities(): City[] {
+  return CITIES;
+}
+
+export function citiesOfCountry(countryId: string): City[] {
+  return CITIES.filter((c) => c.countryId === countryId);
+}
+
+export function cityName(city: City, lang: Lang): string {
+  return loc(city.name, lang);
+}
+
+export function foodsOfCity(city: City): Food[] {
+  const names = new Set(city.foods.map(norm));
+  return getAllFoods().filter((f) => f.countryId === city.countryId && (f.city === city.id || names.has(norm(f.name.en))));
+}
+
+export function cityOfFood(food: Food): City | undefined {
+  if (food.city) {
+    const c = CITIES.find((x) => x.id === food.city);
+    if (c) return c;
+  }
+  const en = norm(food.name.en);
+  return CITIES.find((c) => c.countryId === food.countryId && c.foods.some((n) => norm(n) === en));
+}
+
+export function searchCities(q: string, lang: Lang, limit = 8): City[] {
+  const nq = norm(q);
+  if (!nq) return [];
+  return CITIES.filter((c) => norm(c.name.en).includes(nq) || (c.name.fa && norm(c.name.fa).includes(nq)) || (c.name.ar && norm(c.name.ar).includes(nq))).slice(0, limit);
+}
+
+/* ── Rarity ── */
+
+const MYTHIC_FOODS = new Set(["Hákarl", "Surströmming", "Century Egg", "Lutefisk", "Tea Leaf Salad", "Kumis", "Salo", "Fish Ambul Thiyal", "Sopa Paraguaya"]);
+const LEGENDARY_FOODS = new Set(["Peka", "Pachamanca", "Hallaca", "Chiles en Nogada", "Khuushuur", "Nom Banh Chok", "Gheimeh Nesar", "Sholeh Ghalamkar", "Kalleh Gunjishki", "Torsh Tareh", "Çiğ Köfte", "Balaleet", "Muhammara", "Morgh-e Torsh"]);
+
+const RARITY_BY_DIFF: Record<string, Rarity> = { easy: "common", medium: "uncommon", hard: "rare", extreme: "epic" };
+
+export function rarityOf(food: Food): Rarity {
+  if (MYTHIC_FOODS.has(food.name.en)) return "mythic";
+  if (LEGENDARY_FOODS.has(food.name.en)) return "legendary";
+  return RARITY_BY_DIFF[food.difficulty] ?? "common";
+}
+
+export const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
+
+export function allIngredients(): string[] {
+  return [...new Set(getAllFoods().flatMap((f) => f.ingredients))].sort();
 }

@@ -1,6 +1,6 @@
 import { CONTINENT_LABELS, COUNTRIES } from "../data/countries";
 import { CATEGORIES, MEAT_LABELS } from "../data/lexicon";
-import { categoryLabel, countryFlag, countryName, getAllFoods, getCountry, getImpossiblePool, getScoring, ingredientLabel, loc } from "../data/store";
+import { categoryLabel, citiesOfCountry, cityOfFood, countryFlag, countryName, getAllFoods, getCountry, getImpossiblePool, getScoring, ingredientLabel, loc } from "../data/store";
 import type { AllDifficulty, Difficulty, Food, GameConfig, GameMode, Lang, LocalizedText, Question, QuestionType } from "../data/types";
 
 /* ───────────────────────── Configurable rules ───────────────────────── */
@@ -131,6 +131,11 @@ const TEMPLATES: Record<QuestionType, LocalizedText> = {
     fa: "{food} از کدام کشور است؟",
     ar: "من أي بلد طبق «{food}»؟",
   },
+  city: {
+    en: "{food} — which city or region is this dish associated with?",
+    fa: "{food} با کدام شهر یا منطقه مرتبط است؟",
+    ar: "بأي مدينة أو منطقة يرتبط طبق {food}؟",
+  },
   name: {
     en: "A dish made with {clue}. What is it called?",
     fa: "غذایی که با {clue} درست می‌شود. نامش چیست؟",
@@ -175,9 +180,9 @@ const cuisineOf = (countryId: string, lang: Lang): string =>
 
 const TYPES_BY_DIFF: Record<Difficulty, QuestionType[]> = {
   easy: ["country", "name", "category", "cuisine"],
-  medium: ["country", "name", "ingredient", "cuisine", "category"],
-  hard: ["country", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
-  extreme: ["country", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
+  medium: ["country", "city", "name", "ingredient", "cuisine", "category"],
+  hard: ["country", "city", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
+  extreme: ["country", "city", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
 };
 
 export function applicableTypes(food: Food, diff: AllDifficulty): QuestionType[] {
@@ -187,6 +192,7 @@ export function applicableTypes(food: Food, diff: AllDifficulty): QuestionType[]
     if (t === "meat") return food.meat.length > 0;
     if (t === "notIngredient") return food.ingredients.length >= 3;
     if (t === "name") return food.ingredients.length >= 2;
+    if (t === "city") return !!cityOfFood(food) && citiesOfCountry(food.countryId).length >= 4;
     return true;
   });
 }
@@ -205,6 +211,14 @@ export function generateQuestion(food: Food, type: QuestionType, diff: AllDiffic
     case "country": {
       prompt = tplFood(TEMPLATES.country, food);
       correctText = me?.name ?? { en: food.countryId };
+      break;
+    }
+    case "city": {
+      prompt = tplFood(TEMPLATES.city, food);
+      const correctCity = cityOfFood(food);
+      correctText = correctCity?.name ?? { en: food.city ?? "" };
+      const otherCities = shuffle(citiesOfCountry(food.countryId).filter((c) => c.id !== correctCity?.id), rng).slice(0, 3);
+      options = [correctText, ...otherCities.map((c) => c.name)];
       const others = countries.filter((c) => c.id !== food.countryId);
       const sameCont = others.filter((c) => c.continent === me?.continent);
       const pool = diff === "easy" ? others : [...sameCont, ...sameCont, ...others];
@@ -302,6 +316,13 @@ function getCountriesSafe() {
 function poolFor(cfg: GameConfig): Food[] {
   const all = getAllFoods();
   if (cfg.mode === "country") return all.filter((f) => f.countryId === cfg.countryId);
+  if (cfg.mode === "journey") return all.filter((f) => f.countryId === "iran");
+  if (cfg.mode === "city") {
+    const withCity = all.filter((f) => !!cityOfFood(f));
+    return cfg.countryId ? withCity.filter((f) => f.countryId === cfg.countryId) : withCity;
+  }
+  if (cfg.mode === "hardcore") return all.filter((f) => f.difficulty === "extreme");
+  if (cfg.mode === "speed") return all.filter((f) => f.difficulty === "easy" || f.difficulty === "medium");
   if (cfg.difficulty === "impossible") return all;
   if (cfg.mode === "endless") return all;
   if (cfg.mode === "world") return all;
@@ -467,6 +488,10 @@ export function modeLabel(mode: GameMode): LocalizedText {
     endless: { en: "Endless", fa: "بی‌پایان", ar: "لا نهائي" },
     country: { en: "Country Challenge", fa: "چالش کشوری", ar: "تحدٍّ وطني" },
     world: { en: "World Challenge", fa: "چالش جهانی", ar: "تحدٍّ عالمي" },
+    city: { en: "City Quiz", fa: "کوییز شهری", ar: "اختبار المدينة" },
+    speed: { en: "Speed Mode", fa: "حالت سرعتی", ar: "وضع السرعة" },
+    hardcore: { en: "Hardcore", fa: "هاردکور", ar: "الوضع القاسي" },
+    journey: { en: "Iran Food Journey", fa: "سفر غذایی ایران", ar: "رحلة الطعام الإيراني" },
     daily: { en: "Daily Challenge", fa: "چالش روزانه", ar: "التحدي اليومي" },
   };
   return map[mode];

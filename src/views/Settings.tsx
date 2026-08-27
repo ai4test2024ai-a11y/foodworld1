@@ -109,6 +109,7 @@ export default function Settings() {
                   name: "Guest Chef", xp: 0, gamesPlayed: 0, correct: 0, wrong: 0, bestStreak: 0, bestComboCount: 0,
                   bestGameScore: 0, perfectRounds: 0, impossibleCorrect: 0, countryChallengeCorrect: 0, dailyDates: [],
                   byCountry: {}, byContinent: {}, byFood: {}, achievements: [], history: [],
+                  coins: 0, discovered: [], discoveredIngredients: [],
                 });
                 setResetAsk(false);
                 setResetDone(true);

@@ -1,4 +1,5 @@
 import type { Lang } from "./data/types";
+import { XKEYS } from "./i18nExtra";
 
 export interface LangMeta {
   id: Lang;
@@ -238,7 +239,7 @@ export type TFunc = (key: string, vars?: Record<string, string | number>) => str
 
 export function makeT(lang: Lang): TFunc {
   return (key, vars) => {
-    const e = D[key];
+    const e = D[key] ?? XKEYS[key];
     let s = e ? e[lang] ?? e.en : key;
     if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
     return s;

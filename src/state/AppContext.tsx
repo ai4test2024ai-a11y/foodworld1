@@ -12,6 +12,9 @@ export type View =
   | { name: "game"; config: GameConfig }
   | { name: "library"; foodId?: string }
   | { name: "countries"; countryId?: string }
+  | { name: "map" }
+  | { name: "collection" }
+  | { name: "journey"; countryId: string; cityId?: string }
   | { name: "board" }
   | { name: "profile" }
   | { name: "settings" }
@@ -43,6 +46,9 @@ export interface Profile {
   byFood: Record<string, number>;
   achievements: { id: string; date: string }[];
   history: GameResult[];
+  coins: number;
+  discovered: string[];
+  discoveredIngredients: string[];
 }
 
 const defaultProfile: Profile = {
@@ -63,6 +69,9 @@ const defaultProfile: Profile = {
   byFood: {},
   achievements: [],
   history: [],
+  coins: 0,
+  discovered: [],
+  discoveredIngredients: [],
 };
 
 const defaultSettings: Settings = { sound: true, notifications: true, calendar: "both", animations: true, theme: "dark" };
@@ -95,6 +104,7 @@ interface Ctx {
   profile: Profile;
   saveProfile: (p: Profile) => void;
   recordGame: (r: GameResult, s: GameStats) => { newAchievements: string[]; leveledUp: boolean; level: number; xpGained: number };
+  discover: (foodId: string | undefined, ingredients: string[]) => { newFood: boolean; newIngredients: number };
   isDailyDone: (key: string) => boolean;
   dailyResult: (key: string) => GameResult | undefined;
   markDaily: (key: string, r: GameResult) => void;
@@ -228,6 +238,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void r;
   }, []);
 
+  /** Collection system: discovering a food also collects its ingredients. */
+  const discover = useCallback(
+    (foodId: string | undefined, ingredients: string[]): { newFood: boolean; newIngredients: number } => {
+      if (!foodId) return { newFood: false, newIngredients: 0 };
+      const hadFood = profile.discovered.includes(foodId);
+      const newIngs = ingredients.filter((i) => !profile.discoveredIngredients.includes(i));
+      if (!hadFood || newIngs.length > 0) {
+        setProfile((p) => ({
+          ...p,
+          discovered: p.discovered.includes(foodId) ? p.discovered : [...p.discovered, foodId],
+          discoveredIngredients: [...new Set([...p.discoveredIngredients, ...ingredients])],
+          coins: p.coins + (p.discovered.includes(foodId) ? 0 : 50) + newIngs.length * 5,
+        }));
+      }
+      return { newFood: !hadFood, newIngredients: newIngs.length };
+    },
+    [profile.discovered, profile.discoveredIngredients]
+  );
+
   const value: Ctx = {
     lang,
     setLang,
@@ -239,6 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     profile,
     saveProfile,
     recordGame,
+    discover,
     isDailyDone,
     dailyResult,
     markDaily,

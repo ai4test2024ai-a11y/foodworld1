@@ -45,6 +45,7 @@ export interface Food {
 
 export type QuestionType =
   | "country"
+  | "city"
   | "name"
   | "ingredient"
   | "notIngredient"
@@ -52,6 +53,8 @@ export type QuestionType =
   | "cuisine"
   | "region"
   | "category";
+
+export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 
 export interface Question {
   key: string;
@@ -71,6 +74,10 @@ export type GameMode =
   | "endless"
   | "country"
   | "world"
+  | "city"
+  | "speed"
+  | "hardcore"
+  | "journey"
   | "daily";
 
 export interface GameConfig {
