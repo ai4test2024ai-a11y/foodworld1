@@ -2,6 +2,7 @@ import { CITIES } from "./cities";
 import type { City } from "./cities";
 import { COUNTRIES } from "./countries";
 import { CATEGORIES, INGREDIENTS, MEAT_LABELS, SPICE_LABELS } from "./lexicon";
+import { EXPANSION_FOODS } from "./foodsExpansion";
 import { IRAN_FOODS } from "./foodsIran";
 import { WORLD_FOODS } from "./foodsWorld";
 import { IMPOSSIBLE_POOL } from "./impossible";
@@ -66,7 +67,9 @@ export function getOverrides(): Overrides {
 }
 
 export function getAllFoods(): Food[] {
-  const seed = [...IRAN_FOODS, ...WORLD_FOODS];
+  const seedBase = [...IRAN_FOODS, ...WORLD_FOODS];
+  const knownKeys = new Set(seedBase.map((f) => `${f.countryId}|${f.name.en.trim().toLowerCase()}`));
+  const seed = [...seedBase, ...EXPANSION_FOODS.filter((f) => !knownKeys.has(`${f.countryId}|${f.name.en.trim().toLowerCase()}`))];
   const merged = seed
     .filter((f) => !overrides.deletedFoods.includes(f.id))
     .map((f) => (overrides.editedFoods[f.id] ? { ...f, ...overrides.editedFoods[f.id] } : f));

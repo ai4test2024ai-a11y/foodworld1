@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "../state/AppContext";
-import type { GameConfig, GameResult, Question } from "../data/types";
+import type { GameConfig, GameResult, Lang, Question } from "../data/types";
 import {
   CONFIG,
   buildDaily,
@@ -14,7 +14,8 @@ import {
   todayKey,
   xpForLevel,
 } from "../game/engine";
-import { categoryLabel, countryName, foodName, getCountry, getFood, ingredientLabel, loc, meatLabel, spiceLabel } from "../data/store";
+import { CONTINENT_LABELS } from "../data/countries";
+import { categoryLabel, cityOfFood, countryName, foodName, getCountry, getFood, ingredientLabel, loc, meatLabel, spiceLabel } from "../data/store";
 import { Bar, Btn, CountUp, FoodTile, Modal } from "../components/ui";
 import { sfx } from "../sound";
 
@@ -35,15 +36,21 @@ function saveRun(n: number): void {
 
 type Phase = "playing" | "feedback" | "done";
 
+const REACTIONS_OK = ["r.ok1", "r.ok2", "r.ok3", "r.ok4"];
+const REACTIONS_NO = ["r.no1", "r.no2", "r.no3"];
+const pickReaction = (arr: string[]): string => arr[Math.floor(Math.random() * arr.length)];
+
 export default function Game({ config }: { config: GameConfig }) {
-  const { t, lang, nav, profile, recordGame, markDaily } = useApp();
+  const { t, lang, nav, profile, recordGame, markDaily, discover } = useApp();
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<Phase>("playing");
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(config.mode === "timeAttack" ? Infinity : CONFIG.lives);
+  const [lives, setLives] = useState(
+    config.mode === "timeAttack" || config.mode === "speed" ? Infinity : config.mode === "hardcore" ? 1 : CONFIG.lives
+  );
   const [streak, setStreak] = useState(0);
   const [bestStreakRun, setBestStreakRun] = useState(0);
   const [comboCount, setComboCount] = useState(0);
@@ -52,6 +59,9 @@ export default function Game({ config }: { config: GameConfig }) {
   const [timeLeft, setTimeLeft] = useState(CONFIG.timeAttackSeconds);
   const [quitAsk, setQuitAsk] = useState(false);
   const [lastWasCorrect, setLastWasCorrect] = useState(false);
+  const [reaction, setReaction] = useState("");
+  const [lastDiscovery, setLastDiscovery] = useState<{ newFood: boolean; newIngredients: number } | null>(null);
+  const discoveredCountRef = useRef(0);
 
   const streamRef = useRef<ReturnType<typeof createStream> | null>(null);
   const questionStartRef = useRef(Date.now());
@@ -61,8 +71,8 @@ export default function Game({ config }: { config: GameConfig }) {
   const statsRef = useRef({ byCountry: {} as Record<string, number>, byContinent: {} as Record<string, number>, byFood: {} as Record<string, number> });
   const finishedRef = useRef(false);
 
-  const isTimed = config.mode === "timeAttack";
-  const isStream = config.mode === "timeAttack" || config.mode === "endless";
+  const isTimed = config.mode === "timeAttack" || config.mode === "speed";
+  const isStream = config.mode === "timeAttack" || config.mode === "endless" || config.mode === "speed";
   const total = isStream ? 0 : questions.length;
   const current: Question | null = isStream ? (questions[idx] ?? null) : (questions[idx] ?? null);
   const mult = comboMultiplier(streak);
@@ -193,12 +203,20 @@ export default function Game({ config }: { config: GameConfig }) {
           statsRef.current.byFood[food.id] = (statsRef.current.byFood[food.id] ?? 0) + 1;
           const cont = getCountry(food.countryId)?.continent;
           if (cont) statsRef.current.byContinent[cont] = (statsRef.current.byContinent[cont] ?? 0) + 1;
+          const d = discover(food.id, food.ingredients);
+          setLastDiscovery(d);
+          if (d.newFood) discoveredCountRef.current += 1;
+        } else {
+          setLastDiscovery(null);
         }
+        setReaction(t(pickReaction(REACTIONS_OK)));
       } else {
         sfx.wrong();
         saveRun(0);
         setStreak(0);
         setLastGain(0);
+        setLastDiscovery(null);
+        setReaction(t(pickReaction(REACTIONS_NO)));
         if (!isTimed) setLives((l) => l - 1);
       }
       setPhase("feedback");
@@ -273,7 +291,12 @@ export default function Game({ config }: { config: GameConfig }) {
             {streak >= 3 && <span aria-hidden className="anim-flicker">🔥</span>}
           </div>
           <div className="ms-auto flex items-center gap-2 text-xs font-bold text-muted">
-            <span className="chip px-2 py-0.5 text-[10px] text-saffron">{t(`diff.${config.difficulty}`)}</span>
+            <span className="chip px-2 py-0.5 text-[10px] text-saffron">🪙 {profile.coins.toLocaleString()}</span>
+            {config.mode === "geo" ? (
+              <span className="chip px-2 py-0.5 text-[10px] text-teal">🧭 {t("chain.step", { a: (idx % 3) + 1 })}</span>
+            ) : (
+              <span className="chip px-2 py-0.5 text-[10px] text-saffron">{t(`diff.${config.difficulty}`)}</span>
+            )}
             {!isStream && <span>{t("game.question")} {Math.min(idx + 1, total)}/{total}</span>}
             {isStream && <span>#{idx + 1}</span>}
             <Btn variant="ghost" size="sm" onClick={() => setQuitAsk(true)}>{t("game.quit")}</Btn>
@@ -338,6 +361,16 @@ export default function Game({ config }: { config: GameConfig }) {
                   </span>
                 )}
               </div>
+              {reaction && <p className="anim-fade -mt-1 mb-3 text-sm font-bold text-muted">{reaction}</p>}
+              {lastWasCorrect && lastDiscovery && (lastDiscovery.newFood || lastDiscovery.newIngredients > 0) && (
+                <div className="anim-pop mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-saffron/40 bg-saffron/10 px-3 py-2 text-xs font-extrabold text-saffron">
+                  <span aria-hidden className="text-base">✨</span>
+                  {lastDiscovery.newFood ? t("game.discovery") : t("game.already")}
+                  {lastDiscovery.newIngredients > 0 && <span className="chip border-saffron/40 px-2 py-0.5">🧂 {t("game.discoveryIng", { n: lastDiscovery.newIngredients })}</span>}
+                  <span className="chip border-saffron/40 px-2 py-0.5">🪙 +{lastDiscovery.newFood ? 50 : 0}{lastDiscovery.newIngredients > 0 ? ` +${lastDiscovery.newIngredients * 5}` : ""}</span>
+                </div>
+              )}
+              {config.mode === "geo" && food && <GeoRoute food={food} lang={lang} />}
               {food && (
                 <div className="mb-4 grid gap-4 rounded-xl border border-line bg-panel p-4 sm:grid-cols-[auto_1fr]">
                   <FoodTile emoji={food.emoji} cat={food.categories[0]} size="lg" />
@@ -412,6 +445,34 @@ export default function Game({ config }: { config: GameConfig }) {
 }
 
 /* ── Results screen ── */
+
+function GeoRoute({ food, lang }: { food: NonNullable<ReturnType<typeof getFood>>; lang: Lang }) {
+  const { t } = useApp();
+  const city = cityOfFood(food);
+  const country = getCountry(food.countryId);
+  const cont = country ? CONTINENT_LABELS[country.continent] : undefined;
+  const steps = [
+    { i: "🍜", v: foodName(food, lang) },
+    { i: "🏙️", v: city ? loc(city.name, lang) : "—" },
+    { i: country?.flag ?? "🏳️", v: country ? loc(country.name, lang) : "—" },
+    { i: "🌍", v: cont ? loc(cont, lang) : "—" },
+  ];
+  return (
+    <div className="anim-rise mb-4 rounded-xl border border-teal/40 bg-teal/5 px-3 py-2.5">
+      <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-teal">🧭 {t("chain.route")}</div>
+      <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+        {steps.map((s, i) => (
+          <span key={i} className="flex items-center gap-1.5">
+            <span className="chip flex items-center gap-1 px-2 py-1">
+              <span aria-hidden>{s.i}</span> {s.v}
+            </span>
+            {i < steps.length - 1 && <span aria-hidden className="text-muted rtl:rotate-180">→</span>}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Results({ score, correct, total, bestCombo, bestStreak, config, fromLevel, onAgain, onHome }: {
   score: number; correct: number; total: number; bestCombo: number; bestStreak: number; config: GameConfig; fromLevel: number; onAgain: () => void; onHome: () => void;

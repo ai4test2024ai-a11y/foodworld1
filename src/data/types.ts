@@ -46,6 +46,9 @@ export interface Food {
 export type QuestionType =
   | "country"
   | "city"
+  | "cityCountry"
+  | "reverseCity"
+  | "recipe"
   | "name"
   | "ingredient"
   | "notIngredient"
@@ -78,6 +81,7 @@ export type GameMode =
   | "speed"
   | "hardcore"
   | "journey"
+  | "geo"
   | "daily";
 
 export interface GameConfig {

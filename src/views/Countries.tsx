@@ -5,6 +5,7 @@ import type { Continent } from "../data/types";
 import { cuisineText, foodsByCountry, foodName, getCountries, loc } from "../data/store";
 import { Btn, EmptyState, FoodTile, SectionTitle } from "../components/ui";
 import { sfx } from "../sound";
+import JourneyPage from "./CountryPage";
 
 export default function Countries({ countryId }: { countryId?: string }) {
   const { t, lang, nav } = useApp();
@@ -14,9 +15,7 @@ export default function Countries({ countryId }: { countryId?: string }) {
   const countries = useMemo(() => getCountries(), []);
 
   if (countryId) {
-    const c = countries.find((x) => x.id === countryId);
-    if (!c) return <EmptyState emoji="🗺️" text={t("cn.empty")} />;
-    return <CountryPage id={countryId} />;
+    return <JourneyPage countryId={countryId} />;
   }
 
   const filtered = countries.filter((c) => {

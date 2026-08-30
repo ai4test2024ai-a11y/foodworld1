@@ -9,6 +9,8 @@ import Home from "./views/Home";
 import Game from "./views/Game";
 import Library from "./views/Library";
 import Countries from "./views/Countries";
+import WorldMap from "./views/WorldMap";
+import Collection from "./views/Collection";
 import Board from "./views/Board";
 import Profile from "./views/Profile";
 import Settings from "./views/Settings";
@@ -25,6 +27,7 @@ const I = {
   user: <path d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm-7 16a7 7 0 0 1 14 0" />,
   gear: <path d="M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm8-1.2-1.8-.6a6.6 6.6 0 0 0-.5-1.3l.9-1.7-1.7-1.7-1.7.9c-.4-.2-.8-.4-1.3-.5L13.3 1h-2.6l-.6 1.8c-.5.1-.9.3-1.3.5l-1.7-.9-1.7 1.7.9 1.7c-.2.4-.4.8-.5 1.3L4 8.3v2.6l1.8.6c.1.5.3.9.5 1.3l-.9 1.7 1.7 1.7 1.7-.9c.4.2.8.4 1.3.5l.6 1.8h2.6l.6-1.8c.5-.1.9-.3 1.3-.5l1.7.9 1.7-1.7-.9-1.7c.2-.4.4-.8.5-1.3l1.8-.6V8.3z" />,
   search: <path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zm5 11.5L20 20" />,
+  grid: <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />,
 };
 
 function Icon({ d, className = "h-5 w-5" }: { d: keyof typeof I; className?: string }) {
@@ -40,13 +43,14 @@ function Shell() {
 
   const navItems: { key: string; icon: keyof typeof I; v: View }[] = [
     { key: "nav.home", icon: "home", v: { name: "home" } },
-    { key: "nav.library", icon: "book", v: { name: "library" } },
-    { key: "nav.countries", icon: "globe", v: { name: "countries" } },
+    { key: "nav.map", icon: "globe", v: { name: "map" } },
+    { key: "nav.countries", icon: "book", v: { name: "countries" } },
+    { key: "nav.collection", icon: "grid", v: { name: "collection" } },
     { key: "nav.board", icon: "trophy", v: { name: "board" } },
     { key: "nav.profile", icon: "user", v: { name: "profile" } },
   ];
 
-  const activeKey = view.name === "home" ? "nav.home" : view.name === "library" ? "nav.library" : view.name === "countries" ? "nav.countries" : view.name === "board" ? "nav.board" : view.name === "profile" ? "nav.profile" : view.name === "settings" ? "nav.settings" : "";
+  const activeKey = view.name === "home" ? "nav.home" : view.name === "library" ? "nav.countries" : view.name === "countries" ? "nav.countries" : view.name === "map" ? "nav.map" : view.name === "collection" ? "nav.collection" : view.name === "board" ? "nav.board" : view.name === "profile" ? "nav.profile" : view.name === "settings" ? "nav.settings" : "";
 
   return (
     <div className="ambient min-h-screen">
@@ -56,7 +60,7 @@ function Shell() {
           <button onClick={() => nav({ name: "home" })} className="flex items-center gap-2" aria-label="FoodGuess">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron text-lg shadow-[0_4px_14px_-4px_rgba(242,168,59,0.7)]" aria-hidden>🍽️</span>
             <span className="font-display text-lg font-extrabold tracking-tight">
-              Food<span className="text-saffron">Guess</span>
+              Guess <span className="text-saffron">Your Food</span>
             </span>
             <span className="chip hidden px-2 py-0.5 text-[9px] font-extrabold text-muted md:block">LVL {levelFromXp(profile.xp)}</span>
           </button>
@@ -133,6 +137,8 @@ function Shell() {
           {view.name === "game" && <Game key={JSON.stringify(view.config)} config={view.config} />}
           {view.name === "library" && <Library key={view.foodId ?? "lib"} initialFoodId={view.foodId} />}
           {view.name === "countries" && <Countries key={view.countryId ?? "cn"} countryId={view.countryId} />}
+          {view.name === "map" && <WorldMap />}
+          {view.name === "collection" && <Collection />}
           {view.name === "board" && <Board />}
           {view.name === "profile" && <Profile />}
           {view.name === "settings" && <Settings />}
@@ -142,7 +148,7 @@ function Shell() {
 
       {/* ── Bottom nav (mobile) ── */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/92 backdrop-blur-md lg:hidden" aria-label="Main mobile">
-        <div className="mx-auto grid max-w-md grid-cols-5">
+        <div className="mx-auto grid max-w-md grid-cols-6">
           {navItems.map((n) => (
             <button
               key={n.key}

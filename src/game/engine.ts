@@ -1,5 +1,6 @@
 import { CONTINENT_LABELS, COUNTRIES } from "../data/countries";
 import { CATEGORIES, MEAT_LABELS } from "../data/lexicon";
+import { RECIPES, getRecipe } from "../data/recipes";
 import { categoryLabel, citiesOfCountry, cityOfFood, countryFlag, countryName, getAllFoods, getCountry, getImpossiblePool, getScoring, ingredientLabel, loc } from "../data/store";
 import type { AllDifficulty, Difficulty, Food, GameConfig, GameMode, Lang, LocalizedText, Question, QuestionType } from "../data/types";
 
@@ -136,6 +137,21 @@ const TEMPLATES: Record<QuestionType, LocalizedText> = {
     fa: "{food} با کدام شهر یا منطقه مرتبط است؟",
     ar: "بأي مدينة أو منطقة يرتبط طبق {food}؟",
   },
+  cityCountry: {
+    en: "Which country is the city of {city} in?",
+    fa: "شهر {city} در کدام کشور است؟",
+    ar: "في أي بلد تقع مدينة {city}؟",
+  },
+  reverseCity: {
+    en: "Which of these foods is associated with {city}?",
+    fa: "کدام‌یک از این غذاها با {city} مرتبط است؟",
+    ar: "أي من هذه الأطباق مرتبط بـ {city}؟",
+  },
+  recipe: {
+    en: "In the traditional preparation of {food}, what happens first?",
+    fa: "در تهیه سنتی {food} اولین مرحله چیست؟",
+    ar: "ما الخطوة الأولى في تحضير {food} تقليدياً؟",
+  },
   name: {
     en: "A dish made with {clue}. What is it called?",
     fa: "غذایی که با {clue} درست می‌شود. نامش چیست؟",
@@ -180,9 +196,9 @@ const cuisineOf = (countryId: string, lang: Lang): string =>
 
 const TYPES_BY_DIFF: Record<Difficulty, QuestionType[]> = {
   easy: ["country", "name", "category", "cuisine"],
-  medium: ["country", "city", "name", "ingredient", "cuisine", "category"],
-  hard: ["country", "city", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
-  extreme: ["country", "city", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
+  medium: ["country", "city", "cityCountry", "name", "ingredient", "cuisine", "category"],
+  hard: ["country", "city", "cityCountry", "reverseCity", "recipe", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
+  extreme: ["country", "city", "cityCountry", "reverseCity", "recipe", "name", "ingredient", "notIngredient", "meat", "cuisine", "region", "category"],
 };
 
 export function applicableTypes(food: Food, diff: AllDifficulty): QuestionType[] {
@@ -192,7 +208,9 @@ export function applicableTypes(food: Food, diff: AllDifficulty): QuestionType[]
     if (t === "meat") return food.meat.length > 0;
     if (t === "notIngredient") return food.ingredients.length >= 3;
     if (t === "name") return food.ingredients.length >= 2;
-    if (t === "city") return !!cityOfFood(food) && citiesOfCountry(food.countryId).length >= 4;
+    if (t === "city" || t === "cityCountry") return !!cityOfFood(food) && citiesOfCountry(food.countryId).length >= 4;
+    if (t === "reverseCity") return !!cityOfFood(food);
+    if (t === "recipe") return !!getRecipe(food.name.en);
     return true;
   });
 }
@@ -211,6 +229,11 @@ export function generateQuestion(food: Food, type: QuestionType, diff: AllDiffic
     case "country": {
       prompt = tplFood(TEMPLATES.country, food);
       correctText = me?.name ?? { en: food.countryId };
+      const others = countries.filter((c) => c.id !== food.countryId);
+      const sameCont = others.filter((c) => c.continent === me?.continent);
+      const picks = shuffle(others, rng).slice(0, 3);
+      if (diff !== "easy" && sameCont.length >= 3) picks.push(...shuffle(sameCont, rng).slice(0, 3));
+      options = [correctText, ...shuffle(picks, rng).slice(0, 3).map((c) => c.name)];
       break;
     }
     case "city": {
@@ -219,12 +242,42 @@ export function generateQuestion(food: Food, type: QuestionType, diff: AllDiffic
       correctText = correctCity?.name ?? { en: food.city ?? "" };
       const otherCities = shuffle(citiesOfCountry(food.countryId).filter((c) => c.id !== correctCity?.id), rng).slice(0, 3);
       options = [correctText, ...otherCities.map((c) => c.name)];
-      const others = countries.filter((c) => c.id !== food.countryId);
-      const sameCont = others.filter((c) => c.continent === me?.continent);
-      const pool = diff === "easy" ? others : [...sameCont, ...sameCont, ...others];
-      const picks = shuffle(others, rng).slice(0, 3);
-      if (diff !== "easy" && sameCont.length >= 3) picks.push(...shuffle(sameCont, rng).slice(0, 3));
-      options = [correctText, ...shuffle(picks, rng).slice(0, 3).map((c) => c.name)];
+      break;
+    }
+    case "cityCountry": {
+      const cty = cityOfFood(food);
+      prompt = {
+        en: TEMPLATES.cityCountry.en.replace("{city}", cty?.name.en ?? ""),
+        fa: TEMPLATES.cityCountry.fa?.replace("{city}", cty?.name.fa ?? cty?.name.en ?? ""),
+        ar: TEMPLATES.cityCountry.ar?.replace("{city}", cty?.name.ar ?? cty?.name.en ?? ""),
+      };
+      correctText = me?.name ?? { en: food.countryId };
+      const cOthers = shuffle(countries.filter((c) => c.id !== food.countryId), rng).slice(0, 3);
+      options = [correctText, ...cOthers.map((c) => c.name)];
+      break;
+    }
+    case "reverseCity": {
+      const cty = cityOfFood(food);
+      prompt = {
+        en: TEMPLATES.reverseCity.en.replace("{city}", cty?.name.en ?? ""),
+        fa: TEMPLATES.reverseCity.fa?.replace("{city}", cty?.name.fa ?? cty?.name.en ?? ""),
+        ar: TEMPLATES.reverseCity.ar?.replace("{city}", cty?.name.ar ?? cty?.name.en ?? ""),
+      };
+      correctText = food.name;
+      const decoys = shuffle(foods.filter((f) => f.id !== food.id && f.countryId === food.countryId && !cityOfFood(f)), rng).slice(0, 3);
+      options = [food.name, ...decoys.map((f) => f.name)];
+      break;
+    }
+    case "recipe": {
+      prompt = tplFood(TEMPLATES.recipe, food);
+      const rec = getRecipe(food.name.en);
+      const firstStep = rec?.steps[0]?.en ?? "";
+      correctText = { en: firstStep };
+      const wrongSteps = shuffle(
+        [...new Set(Object.values(RECIPES).flatMap((r) => r.steps.map((s) => s.en)))].filter((s) => s !== firstStep),
+        rng
+      ).slice(0, 3);
+      options = [{ en: firstStep }, ...wrongSteps.map((s) => ({ en: s }))];
       break;
     }
     case "name": {
@@ -329,7 +382,40 @@ function poolFor(cfg: GameConfig): Food[] {
   return all.filter((f) => f.difficulty === cfg.difficulty);
 }
 
+/**
+ * GEOGRAPHY CHAIN — for every selected food, generate 3 chained questions:
+ *   1) food → city   2) city → country   3) country → continent
+ * Returned as a flat sequence so the Game screen plays them back-to-back.
+ */
+export function buildGeoChains(count: number, rng: () => number, countryId?: string): Question[] {
+  const foods = getAllFoods().filter((f) => !!cityOfFood(f) && (!countryId || f.countryId === countryId));
+  const out: Question[] = [];
+  const now = Date.now();
+  const seenKeys = loadSeen();
+  let guard = 0;
+  while (out.length < count * 3 && guard < count * 30 && foods.length > 0) {
+    guard++;
+    const food = pick(foods, rng);
+    const chain: Question[] = [
+      generateQuestion(food, "city", "medium", rng),
+      generateQuestion(food, "cityCountry", "easy", rng),
+      generateQuestion(food, "region", "easy", rng),
+    ];
+    if (seenKeys.has(chain[0].key) && guard < count * 15) continue;
+    seenKeys.set(chain[0].key, now);
+    out.push(...chain);
+  }
+  persistSeen(seenKeys);
+  return out;
+}
+
 export function buildQuestions(cfg: GameConfig, count: number, rng: () => number, seen: Map<string, number>): Question[] {
+  if (cfg.mode === "geo") {
+    const chains = buildGeoChains(Math.ceil(count / 3), rng, cfg.countryId);
+    if (chains.length >= 3) return chains.slice(0, count);
+    // fallback: not enough city-linked foods for this scope — serve classic questions
+    return buildQuestions({ ...cfg, mode: "classic" }, count, rng, seen);
+  }
   if (cfg.difficulty === "impossible") {
     const impossiblePool = getImpossiblePool();
     const pool = shuffle(impossiblePool, rng).slice(0, Math.min(count, impossiblePool.length));
@@ -492,6 +578,7 @@ export function modeLabel(mode: GameMode): LocalizedText {
     speed: { en: "Speed Mode", fa: "حالت سرعتی", ar: "وضع السرعة" },
     hardcore: { en: "Hardcore", fa: "هاردکور", ar: "الوضع القاسي" },
     journey: { en: "Iran Food Journey", fa: "سفر غذایی ایران", ar: "رحلة الطعام الإيراني" },
+    geo: { en: "Geography Chain", fa: "زنجیره جغرافیا", ar: "سلسلة الجغرافيا" },
     daily: { en: "Daily Challenge", fa: "چالش روزانه", ar: "التحدي اليومي" },
   };
   return map[mode];
