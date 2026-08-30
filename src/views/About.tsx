@@ -2,18 +2,16 @@ import { useApp } from "../state/AppContext";
 import { sfx } from "../sound";
 
 /**
- * درباره سازنده — About the Creator.
- * Fixed Persian content (per spec), always RTL, works in every app language & theme.
+ * About the Creator — fully trilingual (EN / FA / AR).
+ * Direction follows the active app language automatically.
  */
 export default function About() {
-  const { nav } = useApp();
+  const { nav, t } = useApp();
 
   return (
     <div className="mx-auto flex w-full max-w-xl justify-center">
       <div
-        dir="rtl"
-        lang="fa"
-        className="anim-rise relative w-full overflow-hidden rounded-[26px] border border-line p-6 text-right sm:p-9"
+        className="anim-rise relative w-full overflow-hidden rounded-[26px] border border-line p-6 sm:p-9"
         style={{ background: "var(--panel)", boxShadow: "var(--shadow)" }}
       >
         {/* layered ambient background */}
@@ -45,37 +43,37 @@ export default function About() {
             className="mt-2 text-center font-extrabold leading-tight text-saffron"
             style={{ fontSize: "clamp(1.7rem, 6vw, 2.4rem)", fontFamily: "var(--font-display)" }}
           >
-            👨‍💻 درباره سازنده
+            👨‍💻 {t("about.title")}
           </h1>
 
           <div className="mx-auto mt-3 h-1 w-24 rounded-full bg-gradient-to-l from-transparent via-[var(--saffron)] to-transparent" aria-hidden />
 
           <p className="mt-6 text-center text-[15px] leading-8 text-ink sm:text-base sm:leading-9">
-            این بازی یکی از بازی‌های ساخته‌شده توسط
+            {t("about.introA")}
             <span className="mx-1 inline-block rounded-lg border border-saffron/40 bg-saffron/10 px-2 py-0.5 font-extrabold text-saffron">
-              کارن خضری، ۱۳ ساله از دبی
+              {t("about.chip")}
             </span>
-            است.
+            {t("about.introB")}
           </p>
 
           <p className="mt-4 text-center text-sm leading-8 text-muted sm:leading-9">
-            این پروژه با هدف یادگیری، خلاقیت و تجربه عملی در برنامه‌نویسی و هوش مصنوعی ساخته شده است.
+            {t("about.purpose")}
           </p>
 
           {/* student / teacher */}
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-line bg-panel2 p-4 text-center">
               <div className="text-2xl" aria-hidden>🎓</div>
-              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">از شاگردان</div>
+              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">{t("about.student")}</div>
               <div className="mt-1 font-extrabold text-ink" style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)" }}>
-                کارن خضری
+                {t("about.studentName")}
               </div>
             </div>
             <div className="rounded-2xl border border-line bg-panel2 p-4 text-center">
               <div className="text-2xl" aria-hidden>👩‍🏫</div>
-              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">استاد</div>
+              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">{t("about.teacher")}</div>
               <div className="mt-1 font-extrabold text-ink" style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)" }}>
-                دکتر ماه منیر آقایی
+                {t("about.teacherName")}
               </div>
             </div>
           </div>
@@ -86,7 +84,7 @@ export default function About() {
             onClick={() => sfx.click()}
             className="group mt-4 flex flex-col items-center gap-1.5 rounded-2xl border-2 border-saffron/50 bg-saffron/10 px-4 py-4 text-center transition-all hover:border-saffron hover:bg-saffron/15 active:scale-[0.98]"
           >
-            <span className="text-xs font-bold text-muted">📞 شماره تماس استاد:</span>
+            <span className="text-xs font-bold text-muted">{t("about.phoneLabel")}</span>
             <span
               dir="ltr"
               className="font-extrabold tracking-[0.12em] text-saffron transition-transform group-hover:scale-105"
@@ -94,7 +92,7 @@ export default function About() {
             >
               00971551544988
             </span>
-            <span className="text-[10px] font-bold text-teal">برای تماس، لمس کنید</span>
+            <span className="text-[10px] font-bold text-teal">{t("about.phoneTap")}</span>
           </a>
 
           {/* back */}
@@ -105,8 +103,8 @@ export default function About() {
             }}
             className="mx-auto mt-7 flex min-h-12 w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-saffron px-6 text-base font-extrabold text-[#241705] shadow-[0_6px_20px_-6px_rgba(242,168,59,0.55)] transition-all hover:bg-saffron2 active:scale-[0.97]"
           >
-            <span aria-hidden className="rotate-180">→</span>
-            بازگشت
+            <span aria-hidden className="rotate-180 rtl:rotate-0">→</span>
+            {t("about.back")}
           </button>
         </div>
       </div>
