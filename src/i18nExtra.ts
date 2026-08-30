@@ -94,4 +94,6 @@ export const XKEYS: Record<string, Record<Lang, string>> = {
   "home.journeyBtn": { en: "IRAN FOOD JOURNEY", fa: "سفر غذایی ایران", ar: "رحلة الطعام الإيراني" },
   "home.dailyBtn": { en: "DAILY CHALLENGE", fa: "چالش روزانه", ar: "التحدي اليومي" },
   "game.playAgain": { en: "Play again", fa: "بازی دوباره", ar: "العب مجدداً" },
+  "nav.about": { en: "About the Creator", fa: "درباره سازنده", ar: "عن المطوّر" },
+  "about.cardSub": { en: "Karen Khezri · 13 · Dubai", fa: "کارن خضری · ۱۳ ساله · دبی", ar: "كارن خزري · 13 · دبي" },
 };

@@ -18,6 +18,7 @@ export type View =
   | { name: "board" }
   | { name: "profile" }
   | { name: "settings" }
+  | { name: "about" }
   | { name: "admin" };
 
 export interface Settings {

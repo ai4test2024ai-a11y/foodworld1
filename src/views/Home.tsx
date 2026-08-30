@@ -68,7 +68,7 @@ export default function Home() {
             {showGreg && <span className="chip px-2.5 py-1 text-[10px] font-bold text-muted">{gregorianDate(date, lang)}</span>}
             {showJal && <span className="chip px-2.5 py-1 text-[10px] font-bold text-muted">🗓️ {persianDate(date, lang)}</span>}
           </div>
-          <h1 className="font-display text-4xl font-extrabold leading-[1.05] sm:text-6xl">
+          <h1 className="font-display font-extrabold leading-[1.08]" style={{ fontSize: "clamp(1.9rem, 7.5vw, 3.75rem)" }}>
             {t("brand.name").split(" ")[0]} <span className="text-saffron">{t("brand.name").split(" ").slice(1).join(" ")}</span> 🌍🍴
           </h1>
           <p className="max-w-xl text-base font-semibold text-muted sm:text-lg">{t("brand.sub")}</p>
@@ -169,6 +169,19 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {/* about the creator — menu entry */}
+        <button
+          onClick={() => { nav({ name: "about" }); sfx.click(); }}
+          className="card group mt-3 flex w-full items-center gap-3 p-4 text-start transition-all hover:-translate-y-0.5 hover:border-saffron/60"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal/12 text-2xl" aria-hidden>👨‍💻</span>
+          <span className="min-w-0 flex-1" dir="rtl">
+            <span className="block font-display text-sm font-extrabold">درباره سازنده</span>
+            <span className="block truncate text-[11px] text-muted">کارن خضری · ۱۳ ساله · دبی</span>
+          </span>
+          <span aria-hidden className="shrink-0 text-muted transition-transform group-hover:-translate-x-1 rtl:rotate-180">→</span>
+        </button>
       </section>
 
       {/* ── Recent discoveries + featured ── */}

@@ -100,7 +100,7 @@ export function Modal({ open, onClose, children, wide }: { open: boolean; onClos
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6 anim-fade" onClick={onClose} role="dialog" aria-modal="true">
       <div
-        className={`card max-h-[92vh] w-full overflow-y-auto rounded-b-none rounded-t-2xl p-5 sm:rounded-2xl ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"} anim-rise`}
+        className={`card max-h-[92dvh] w-full overflow-y-auto rounded-b-none rounded-t-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-5 ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"} anim-rise`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -167,7 +167,7 @@ export function SectionTitle({ kicker, title, action }: { kicker?: string; title
     <div className="mb-4 flex items-end justify-between gap-3">
       <div>
         {kicker && <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-saffron">{kicker}</div>}
-        <h2 className="font-display text-2xl font-bold sm:text-3xl">{title}</h2>
+        <h2 className="font-display font-bold" style={{ fontSize: "clamp(1.35rem, 1.05rem + 1.6vw, 1.875rem)" }}>{title}</h2>
       </div>
       {action}
     </div>
