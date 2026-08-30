@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+  // GitHub Pages serves this site from a repository subpath
+  // (https://<user>.github.io/foodworld1/), so assets must be
+  // referenced relatively instead of from the domain root.
+  base: "./",
   plugins: [react(), tailwindcss()],
   server: {
     host: "0.0.0.0",
