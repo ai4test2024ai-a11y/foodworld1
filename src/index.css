@@ -58,7 +58,12 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  min-height: 100%;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+#root {
+  overflow-x: clip;
 }
 
 * {

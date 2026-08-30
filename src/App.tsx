@@ -14,6 +14,7 @@ import Collection from "./views/Collection";
 import Board from "./views/Board";
 import Profile from "./views/Profile";
 import Settings from "./views/Settings";
+import About from "./views/About";
 import Admin from "./views/Admin";
 import { Modal } from "./components/ui";
 import { sfx } from "./sound";
@@ -53,13 +54,13 @@ function Shell() {
   const activeKey = view.name === "home" ? "nav.home" : view.name === "library" ? "nav.countries" : view.name === "countries" ? "nav.countries" : view.name === "map" ? "nav.map" : view.name === "collection" ? "nav.collection" : view.name === "board" ? "nav.board" : view.name === "profile" ? "nav.profile" : view.name === "settings" ? "nav.settings" : "";
 
   return (
-    <div className="ambient min-h-screen">
+    <div className="ambient min-h-dvh">
       {/* ── Top bar ── */}
       <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2.5">
           <button onClick={() => nav({ name: "home" })} className="flex items-center gap-2" aria-label="FoodGuess">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron text-lg shadow-[0_4px_14px_-4px_rgba(242,168,59,0.7)]" aria-hidden>🍽️</span>
-            <span className="font-display text-lg font-extrabold tracking-tight">
+            <span className="hidden font-display text-lg font-extrabold tracking-tight min-[430px]:inline">
               Guess <span className="text-saffron">Your Food</span>
             </span>
             <span className="chip hidden px-2 py-0.5 text-[9px] font-extrabold text-muted md:block">LVL {levelFromXp(profile.xp)}</span>
@@ -91,7 +92,7 @@ function Shell() {
             </button>
             <button
               onClick={() => updateSettings({ sound: !settings.sound })}
-              className="rounded-lg border border-line bg-panel2 px-2.5 py-2 text-sm transition-colors hover:border-saffron/50"
+              className="hidden rounded-lg border border-line bg-panel2 px-2.5 py-2 text-sm transition-colors hover:border-saffron/50 min-[380px]:inline-block"
               aria-label={t("set.sound")}
             >
               {settings.sound ? "🔊" : "🔇"}
@@ -110,7 +111,7 @@ function Shell() {
         )}
       </header>
 
-      <div className="relative z-10 mx-auto flex max-w-6xl gap-6 px-4 pb-28 pt-6 lg:pb-10">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl gap-6 px-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-4 sm:pt-6 lg:pb-10">
         {/* ── Sidebar (desktop) ── */}
         <nav className="sticky top-24 hidden h-fit w-44 shrink-0 flex-col gap-1 lg:flex" aria-label="Main">
           {navItems.map((n) => (
@@ -123,6 +124,12 @@ function Shell() {
               {t(n.key)}
             </button>
           ))}
+          <button
+            onClick={() => { nav({ name: "about" }); sfx.click(); }}
+            className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${view.name === "about" ? "border-saffron/60 bg-saffron/10 text-saffron" : "border-transparent text-muted hover:bg-panel hover:text-ink"}`}
+          >
+            👨‍💻 {t("nav.about")}
+          </button>
           <button
             onClick={() => { nav({ name: "admin" }); sfx.click(); }}
             className={`mt-4 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${view.name === "admin" ? "border-saffron/60 bg-saffron/10 text-saffron" : "border-transparent text-muted/70 hover:bg-panel hover:text-ink"}`}
@@ -142,13 +149,17 @@ function Shell() {
           {view.name === "board" && <Board />}
           {view.name === "profile" && <Profile />}
           {view.name === "settings" && <Settings />}
+          {view.name === "about" && <About />}
           {view.name === "admin" && <Admin />}
         </main>
       </div>
 
       {/* ── Bottom nav (mobile) ── */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/92 backdrop-blur-md lg:hidden" aria-label="Main mobile">
-        <div className="mx-auto grid max-w-md grid-cols-6">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/92 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+        aria-label="Main mobile"
+      >
+        <div className="mx-auto grid w-full max-w-md grid-cols-6">
           {navItems.map((n) => (
             <button
               key={n.key}

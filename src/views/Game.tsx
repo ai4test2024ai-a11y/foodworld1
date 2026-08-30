@@ -311,7 +311,7 @@ export default function Game({ config }: { config: GameConfig }) {
       {/* ── Question card ── */}
       {phase !== "done" && current && (
         <div key={idx} className="card anim-rise overflow-hidden">
-          <div className="flex flex-col items-center gap-3 p-6 pb-4 text-center">
+          <div className="flex flex-col items-center gap-3 p-4 pb-3 text-center sm:p-6 sm:pb-4">
             {current.showEmoji !== false ? (
               <FoodTile emoji={current.emoji ?? "🍽️"} size="xl" className="anim-floaty" />
             ) : (
@@ -323,7 +323,7 @@ export default function Game({ config }: { config: GameConfig }) {
             <h2 className="max-w-xl font-display text-xl font-bold leading-snug sm:text-2xl">{loc(current.prompt, lang)}</h2>
           </div>
 
-          <div className="grid gap-2.5 p-5 pt-1 sm:grid-cols-2">
+          <div className="grid gap-2.5 p-3 pt-1 sm:grid-cols-2 sm:p-5 sm:pt-1">
             {current.options.map((opt, i) => {
               const isCorrect = i === current.correct;
               const isSel = i === selected;
@@ -351,7 +351,7 @@ export default function Game({ config }: { config: GameConfig }) {
 
           {/* ── Feedback: food info card ── */}
           {phase === "feedback" && (
-            <div className="anim-rise border-t border-line bg-panel2/50 p-5">
+            <div className="anim-rise border-t border-line bg-panel2/50 p-4 sm:p-5">
               <div className={`mb-3 flex items-center gap-2 font-display text-lg font-extrabold ${lastWasCorrect ? "text-pist" : "text-pom"}`}>
                 <span aria-hidden className="text-2xl">{lastWasCorrect ? "✅" : "❌"}</span>
                 {lastWasCorrect ? t("game.correct") : t("game.wrong")}
