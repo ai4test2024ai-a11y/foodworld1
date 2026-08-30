@@ -178,7 +178,7 @@ export default function Home() {
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-saffron/12 text-2xl" aria-hidden>❔</span>
           <span className="min-w-0 flex-1">
             <span className="block font-display text-sm font-extrabold">{t("nav.help")}</span>
-            <span className="block text-[11px] text-muted" dir="rtl">آموزش کامل بازی؛ از ورودی‌ها تا خروجی‌ها</span>
+            <span className="block truncate text-[11px] text-muted">{t("home.helpSub")}</span>
           </span>
           <span aria-hidden className="shrink-0 text-muted transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1">→</span>
         </button>
@@ -189,9 +189,9 @@ export default function Home() {
           className="card group mt-3 flex w-full items-center gap-3 p-4 text-start transition-all hover:-translate-y-0.5 hover:border-saffron/60"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal/12 text-2xl" aria-hidden>👨‍💻</span>
-          <span className="min-w-0 flex-1" dir="rtl">
-            <span className="block font-display text-sm font-extrabold">درباره سازنده</span>
-            <span className="block truncate text-[11px] text-muted">کارن خضری · ۱۳ ساله · دبی</span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-sm font-extrabold">{t("nav.about")}</span>
+            <span className="block truncate text-[11px] text-muted">{t("about.cardSub")}</span>
           </span>
           <span aria-hidden className="shrink-0 text-muted transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1">→</span>
         </button>
