@@ -16,6 +16,7 @@ import Profile from "./views/Profile";
 import Settings from "./views/Settings";
 import About from "./views/About";
 import Help from "./views/Help";
+import Stats from "./views/Stats";
 import Admin from "./views/Admin";
 import { Modal } from "./components/ui";
 import { sfx } from "./sound";
@@ -126,6 +127,12 @@ function Shell() {
             </button>
           ))}
           <button
+            onClick={() => { nav({ name: "stats" }); sfx.click(); }}
+            className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${view.name === "stats" ? "border-saffron/60 bg-saffron/10 text-saffron" : "border-transparent text-muted hover:bg-panel hover:text-ink"}`}
+          >
+            📊 {t("nav.stats")}
+          </button>
+          <button
             onClick={() => { nav({ name: "help" }); sfx.click(); }}
             className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${view.name === "help" ? "border-saffron/60 bg-saffron/10 text-saffron" : "border-transparent text-muted hover:bg-panel hover:text-ink"}`}
           >
@@ -158,6 +165,7 @@ function Shell() {
           {view.name === "settings" && <Settings />}
           {view.name === "about" && <About />}
           {view.name === "help" && <Help />}
+          {view.name === "stats" && <Stats />}
           {view.name === "admin" && <Admin />}
         </main>
       </div>

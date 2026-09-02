@@ -22,6 +22,10 @@ export const CONFIG = {
   dailyQuestions: 10,
   timeAttackSeconds: 60,
   speedBonusMax: 50,
+  wrongPenalty: 20,
+  /** Multiplier applied to a correct answer's points for each hint level used (index = hints used). */
+  hintFactor: [1, 0.75, 0.5, 0.35, 0.25],
+  maxHints: 4,
   unlocks: {
     easy: { level: 0 },
     medium: { level: 2 },
@@ -42,6 +46,27 @@ export function comboMultiplier(streak: number): number {
 export function pointsFor(d: AllDifficulty): number {
   const ov = getScoring();
   return ov[d] ?? CONFIG.points[d];
+}
+
+/** Penalty subtracted on a wrong answer (score never drops below 0). */
+export function wrongPenalty(): number {
+  return CONFIG.wrongPenalty;
+}
+
+/** Multiplier applied to a correct answer's points given the number of hints used. */
+export function hintFactor(hintsUsed: number): number {
+  return CONFIG.hintFactor[Math.min(hintsUsed, CONFIG.hintFactor.length - 1)] ?? 0.25;
+}
+
+/** Progressive hint values for a food: country → main ingredient → category → first letter. */
+export function hintsFor(food: Food, lang: Lang): string[] {
+  const name = (lang === "fa" ? food.name.fa : lang === "ar" ? food.name.ar : food.name.en) ?? food.name.en;
+  return [
+    `${countryFlag(food.countryId)} ${countryName(food.countryId, lang)}`,
+    `🧂 ${ingredientLabel(food.ingredients[0] ?? "", lang)}`,
+    `🗂️ ${categoryLabel(food.categories[0] ?? "traditional", lang)}`,
+    `🔤 «${name.trim().charAt(0)}» …`,
+  ];
 }
 
 export function levelFromXp(xp: number): number {
@@ -186,6 +211,11 @@ const TEMPLATES: Record<QuestionType, LocalizedText> = {
     en: "What kind of dish is {food}?",
     fa: "{food} چه نوع غذایی است؟",
     ar: "ما نوع طبق {food}؟",
+  },
+  battle: {
+    en: "Which dish matches the clue?",
+    fa: "کدام غذا با سرنخ جور است؟",
+    ar: "أي طبق يطابق الدليل؟",
   },
 };
 
@@ -344,6 +374,13 @@ export function generateQuestion(food: Food, type: QuestionType, diff: AllDiffic
       options = [correctText, ...others.map((k) => CATEGORIES[k])];
       break;
     }
+    case "battle": {
+      // Battle questions are built by buildBattleQuestions (two foods). This stub keeps types complete.
+      prompt = TEMPLATES.battle;
+      correctText = food.name;
+      options = [food.name];
+      break;
+    }
   }
 
   const shuffled = shuffle(options.map((o, i) => ({ o, correct: i === 0 })), rng);
@@ -409,7 +446,74 @@ export function buildGeoChains(count: number, rng: () => number, countryId?: str
   return out;
 }
 
+/* ───────────────────────── Food-vs-Food battle ───────────────────────── */
+
+const BATTLE_KINDS = ["spicy", "country", "dessert", "veg"] as const;
+const isDessert = (f: Food): boolean => f.categories.includes("dessert") || f.categories.includes("sweet");
+
+export function buildBattleQuestions(count: number, rng: () => number): Question[] {
+  const all = getAllFoods();
+  const out: Question[] = [];
+  let guard = 0;
+  while (out.length < count && guard < count * 40 && all.length > 1) {
+    guard++;
+    const kind = BATTLE_KINDS[Math.floor(rng() * BATTLE_KINDS.length)];
+    const a = pick(all, rng);
+    const b = pick(all, rng);
+    if (a.id === b.id) continue;
+    let prompt: LocalizedText;
+    let correctFood: Food;
+    switch (kind) {
+      case "spicy": {
+        if (a.spice === b.spice) continue;
+        correctFood = a.spice > b.spice ? a : b;
+        prompt = { en: "Which of these dishes is spicier?", fa: "کدام‌یک از این غذاها تندتر است؟", ar: "أي من هذين الطبقين أكثر حدة؟" };
+        break;
+      }
+      case "country": {
+        if (a.countryId === b.countryId) continue;
+        correctFood = a;
+        prompt = {
+          en: `Which dish is from ${countryName(a.countryId, "en")}?`,
+          fa: `کدام غذا از ${countryName(a.countryId, "fa")} است؟`,
+          ar: `أي طبق من ${countryName(a.countryId, "ar")}؟`,
+        };
+        break;
+      }
+      case "dessert": {
+        if (isDessert(a) === isDessert(b)) continue;
+        correctFood = isDessert(a) ? a : b;
+        prompt = { en: "Which of these is a dessert?", fa: "کدام‌یک از این غذاها دسر است؟", ar: "أي من هذين الطبقين حلوى؟" };
+        break;
+      }
+      default: {
+        if (a.veg === b.veg) continue;
+        correctFood = a.veg ? a : b;
+        prompt = { en: "Which of these is vegetarian?", fa: "کدام‌یک از این غذاها گیاهی است؟", ar: "أي من هذين الطبقين نباتي؟" };
+        break;
+      }
+    }
+    const other = correctFood.id === a.id ? b : a;
+    const flip = rng() < 0.5;
+    const first = flip ? other : correctFood;
+    const second = flip ? correctFood : other;
+    out.push({
+      key: `battle|${a.id}|${b.id}|${kind}`,
+      type: "battle",
+      foodId: first.id,
+      foodIdB: second.id,
+      prompt,
+      options: [first.name, second.name],
+      correct: flip ? 1 : 0,
+      difficulty: "medium",
+      showEmoji: false,
+    });
+  }
+  return out;
+}
+
 export function buildQuestions(cfg: GameConfig, count: number, rng: () => number, seen: Map<string, number>): Question[] {
+  if (cfg.mode === "battle") return buildBattleQuestions(count, rng);
   if (cfg.mode === "geo") {
     const chains = buildGeoChains(Math.ceil(count / 3), rng, cfg.countryId);
     if (chains.length >= 3) return chains.slice(0, count);
@@ -579,6 +683,8 @@ export function modeLabel(mode: GameMode): LocalizedText {
     hardcore: { en: "Hardcore", fa: "هاردکور", ar: "الوضع القاسي" },
     journey: { en: "Iran Food Journey", fa: "سفر غذایی ایران", ar: "رحلة الطعام الإيراني" },
     geo: { en: "Geography Chain", fa: "زنجیره جغرافیا", ar: "سلسلة الجغرافيا" },
+    battle: { en: "Food vs Food", fa: "غذا در برابر غذا", ar: "طعام ضد طعام" },
+    streak: { en: "Streak Mode", fa: "حالت استریک", ar: "وضع السلسلة" },
     daily: { en: "Daily Challenge", fa: "چالش روزانه", ar: "التحدي اليومي" },
   };
   return map[mode];

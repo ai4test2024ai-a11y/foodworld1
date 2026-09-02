@@ -7,11 +7,14 @@ import {
   buildQuestions,
   comboMultiplier,
   createStream,
+  hintFactor,
+  hintsFor,
   levelFromXp,
   loadSeen,
   persistSeen,
   pointsFor,
   todayKey,
+  wrongPenalty,
   xpForLevel,
 } from "../game/engine";
 import { CONTINENT_LABELS } from "../data/countries";
@@ -49,7 +52,11 @@ export default function Game({ config }: { config: GameConfig }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(
-    config.mode === "timeAttack" || config.mode === "speed" ? Infinity : config.mode === "hardcore" ? 1 : CONFIG.lives
+    config.mode === "timeAttack" || config.mode === "speed"
+      ? Infinity
+      : config.mode === "hardcore" || config.mode === "streak"
+        ? 1
+        : CONFIG.lives
   );
   const [streak, setStreak] = useState(0);
   const [bestStreakRun, setBestStreakRun] = useState(0);
@@ -61,6 +68,7 @@ export default function Game({ config }: { config: GameConfig }) {
   const [lastWasCorrect, setLastWasCorrect] = useState(false);
   const [reaction, setReaction] = useState("");
   const [lastDiscovery, setLastDiscovery] = useState<{ newFood: boolean; newIngredients: number } | null>(null);
+  const [hintsUsed, setHintsUsed] = useState(0);
   const discoveredCountRef = useRef(0);
 
   const streamRef = useRef<ReturnType<typeof createStream> | null>(null);
@@ -72,7 +80,7 @@ export default function Game({ config }: { config: GameConfig }) {
   const finishedRef = useRef(false);
 
   const isTimed = config.mode === "timeAttack" || config.mode === "speed";
-  const isStream = config.mode === "timeAttack" || config.mode === "endless" || config.mode === "speed";
+  const isStream = config.mode === "timeAttack" || config.mode === "endless" || config.mode === "speed" || config.mode === "streak";
   const total = isStream ? 0 : questions.length;
   const current: Question | null = isStream ? (questions[idx] ?? null) : (questions[idx] ?? null);
   const mult = comboMultiplier(streak);
@@ -169,23 +177,41 @@ export default function Game({ config }: { config: GameConfig }) {
     }
     setIdx(nextIdx);
     setSelected(null);
+    setHintsUsed(0);
+    setLastDiscovery(null);
     setPhase("playing");
     questionStartRef.current = Date.now();
   }, [idx, isStream, isTimed, lives, total, finish, score, correct, bestStreakRun, comboCount]);
 
+  /* Skip: consume the question, score nothing, cost no life, break the streak. */
+  const skip = useCallback(() => {
+    if (phase !== "playing" || !current) return;
+    sfx.click();
+    setStreak(0);
+    setLastGain(0);
+    advance();
+  }, [phase, current, advance]);
+
   const answer = useCallback(
     (i: number) => {
       if (phase !== "playing" || !current) return;
+      if (i < 0 || i >= current.options.length) return;
       const ok = i === current.correct;
       setSelected(i);
       setLastWasCorrect(ok);
-      const food = current.foodId ? getFood(current.foodId) : undefined;
+      const correctFoodId =
+        current.type === "battle"
+          ? current.correct === 0
+            ? current.foodId
+            : current.foodIdB
+          : current.foodId;
+      const food = correctFoodId ? getFood(correctFoodId) : undefined;
       if (ok) {
         sfx.correct();
         const base = pointsFor(current.difficulty);
         const newStreak = streak + 1;
         const newMult = comboMultiplier(newStreak);
-        let gain = base * newMult;
+        let gain = Math.round(base * newMult * hintFactor(hintsUsed));
         if (isTimed) {
           const elapsed = (Date.now() - questionStartRef.current) / 1000;
           gain += Math.max(0, Math.round(CONFIG.speedBonusMax - elapsed * 5));
@@ -214,23 +240,24 @@ export default function Game({ config }: { config: GameConfig }) {
         sfx.wrong();
         saveRun(0);
         setStreak(0);
-        setLastGain(0);
+        setLastGain(-wrongPenalty());
+        setScore((s) => Math.max(0, s - wrongPenalty()));
         setLastDiscovery(null);
         setReaction(t(pickReaction(REACTIONS_NO)));
         if (!isTimed) setLives((l) => l - 1);
       }
       setPhase("feedback");
     },
-    [phase, current, streak, isTimed]
+    [phase, current, streak, isTimed, hintsUsed]
   );
 
-  /* lives out */
+  /* lives out — also ends stream modes (endless / streak) when lives run dry */
   useEffect(() => {
-    if (!isStream && phase === "feedback" && lives <= 0 && !lastWasCorrect) {
+    if (!isTimed && phase === "feedback" && lives <= 0 && !lastWasCorrect) {
       const timer = setTimeout(() => finish(score, correct, idx + 1, bestStreakRun, comboCount), 1400);
       return () => clearTimeout(timer);
     }
-  }, [lives, phase, isStream, lastWasCorrect, finish, score, correct, idx, bestStreakRun, comboCount]);
+  }, [lives, phase, isTimed, lastWasCorrect, finish, score, correct, idx, bestStreakRun, comboCount]);
 
   /* keyboard */
   useEffect(() => {
@@ -248,6 +275,13 @@ export default function Game({ config }: { config: GameConfig }) {
 
   const food = current?.foodId ? getFood(current.foodId) : undefined;
   const country = food ? getCountry(food.countryId) : undefined;
+  const hintsList = useMemo(() => (food ? hintsFor(food, lang) : []), [food, lang]);
+
+  const useHint = () => {
+    if (phase !== "playing" || hintsUsed >= hintsList.length) return;
+    sfx.click();
+    setHintsUsed((h) => h + 1);
+  };
 
   const letters = ["A", "B", "C", "D"];
 
@@ -271,6 +305,9 @@ export default function Game({ config }: { config: GameConfig }) {
             <CountUp value={score} className="font-display text-lg text-saffron" />
             {phase === "feedback" && lastWasCorrect && (
               <span className="anim-pop font-display text-xs font-extrabold text-pist">+{lastGain}</span>
+            )}
+            {phase === "feedback" && !lastWasCorrect && lastGain < 0 && (
+              <span className="anim-pop font-display text-xs font-extrabold text-pom">{lastGain}</span>
             )}
           </div>
           {isTimed ? (
@@ -312,7 +349,11 @@ export default function Game({ config }: { config: GameConfig }) {
       {phase !== "done" && current && (
         <div key={idx} className="card anim-rise overflow-hidden">
           <div className="flex flex-col items-center gap-3 p-4 pb-3 text-center sm:p-6 sm:pb-4">
-            {current.showEmoji !== false ? (
+            {current.type === "battle" ? (
+              <div className="flex items-center gap-2 font-display text-xl font-extrabold text-saffron">
+                <span aria-hidden className="text-2xl">⚔️</span> {t("mode.battle")}
+              </div>
+            ) : current.showEmoji !== false ? (
               <FoodTile emoji={current.emoji ?? "🍽️"} size="xl" className="anim-floaty" />
             ) : (
               <div className="flex h-40 w-40 items-center justify-center rounded-xl border-2 border-dashed border-line2 bg-panel2 font-display text-6xl font-extrabold text-line2 select-none" aria-hidden>?</div>
@@ -323,31 +364,90 @@ export default function Game({ config }: { config: GameConfig }) {
             <h2 className="max-w-xl font-display text-xl font-bold leading-snug sm:text-2xl">{loc(current.prompt, lang)}</h2>
           </div>
 
-          <div className="grid gap-2.5 p-3 pt-1 sm:grid-cols-2 sm:p-5 sm:pt-1">
-            {current.options.map((opt, i) => {
-              const isCorrect = i === current.correct;
-              const isSel = i === selected;
-              let cls = "border-line bg-panel2 hover:border-saffron/60 hover:bg-saffron/5";
-              if (phase === "feedback") {
-                if (isCorrect) cls = "border-pist bg-pist/15 text-pist anim-pop";
-                else if (isSel) cls = "border-pom bg-pom/15 text-pom anim-shake";
-                else cls = "border-line bg-panel2 opacity-40";
-              }
-              return (
+          {/* Hint / Skip toolbar */}
+          {phase === "playing" && (
+            <div className="flex flex-wrap items-center justify-center gap-2 px-4 pb-2">
+              {current.type !== "battle" && hintsUsed < hintsList.length && (
                 <button
-                  key={i}
-                  disabled={phase !== "playing"}
-                  onClick={() => answer(i)}
-                  className={`flex min-h-14 items-center gap-3 rounded-xl border-2 px-4 py-3 text-start text-sm font-bold transition-all sm:text-base ${cls}`}
+                  onClick={useHint}
+                  className="chip flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-saffron transition-all hover:border-saffron hover:bg-saffron/10"
                 >
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border font-display text-sm font-extrabold ${phase === "feedback" && isCorrect ? "border-pist bg-pist text-[#1c2b0a]" : phase === "feedback" && isSel ? "border-pom bg-pom text-[#2b0a0a]" : "border-line2 bg-bg text-muted"}`}>
-                    {phase === "feedback" && isCorrect ? "✓" : phase === "feedback" && isSel && !isCorrect ? "✕" : letters[i]}
-                  </span>
-                  {loc(opt, lang)}
+                  💡 {t("game.hint")}
+                  {hintsUsed > 0 && <span>({hintsUsed})</span>}
+                  <span className="font-bold text-pom">{t("game.hintPenalty")}</span>
                 </button>
-              );
-            })}
-          </div>
+              )}
+              <button
+                onClick={skip}
+                className="chip flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-muted transition-all hover:border-line2 hover:text-ink"
+              >
+                ⏭ {t("game.skip")}
+              </button>
+            </div>
+          )}
+
+          {/* Revealed hints */}
+          {hintsUsed > 0 && current.type !== "battle" && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5 px-4 pb-3">
+              {hintsList.slice(0, hintsUsed).map((h, i) => (
+                <span key={i} className="chip anim-pop px-3 py-1.5 text-xs font-bold text-saffron">{h}</span>
+              ))}
+            </div>
+          )}
+
+          {current.type === "battle" ? (
+            <div className="grid grid-cols-2 gap-3 p-3 sm:p-5 sm:pt-2">
+              {current.options.map((opt, i) => {
+                const f = i === 0 ? getFood(current.foodId ?? "") : getFood(current.foodIdB ?? "");
+                const isCorrect = i === current.correct;
+                const isSel = i === selected;
+                let cls = "border-line bg-panel2 hover:border-saffron/60 hover:bg-saffron/5";
+                if (phase === "feedback") {
+                  if (isCorrect) cls = "border-pist bg-pist/15 anim-pop";
+                  else if (isSel) cls = "border-pom bg-pom/15 anim-shake";
+                  else cls = "border-line bg-panel2 opacity-40";
+                }
+                return (
+                  <button
+                    key={i}
+                    disabled={phase !== "playing"}
+                    onClick={() => answer(i)}
+                    aria-label={loc(opt, lang)}
+                    className={`flex min-h-32 flex-col items-center justify-center gap-2.5 rounded-xl border-2 p-4 text-center transition-all ${cls}`}
+                  >
+                    <FoodTile emoji={f?.emoji ?? "🍽️"} cat={f?.categories[0]} size="md" />
+                    <span className="text-sm font-bold leading-snug sm:text-base">{loc(opt, lang)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid gap-2.5 p-3 pt-1 sm:grid-cols-2 sm:p-5 sm:pt-1">
+              {current.options.map((opt, i) => {
+                const isCorrect = i === current.correct;
+                const isSel = i === selected;
+                let cls = "border-line bg-panel2 hover:border-saffron/60 hover:bg-saffron/5";
+                if (phase === "feedback") {
+                  if (isCorrect) cls = "border-pist bg-pist/15 text-pist anim-pop";
+                  else if (isSel) cls = "border-pom bg-pom/15 text-pom anim-shake";
+                  else cls = "border-line bg-panel2 opacity-40";
+                }
+                return (
+                  <button
+                    key={i}
+                    disabled={phase !== "playing"}
+                    onClick={() => answer(i)}
+                    className={`flex min-h-14 items-center gap-3 rounded-xl border-2 px-4 py-3 text-start text-sm font-bold transition-all sm:text-base ${cls}`}
+                  >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border font-display text-sm font-extrabold ${phase === "feedback" && isCorrect ? "border-pist bg-pist text-[#1c2b0a]" : phase === "feedback" && isSel ? "border-pom bg-pom text-[#2b0a0a]" : "border-line2 bg-bg text-muted"}`}>
+                      {phase === "feedback" && isCorrect ? "✓" : phase === "feedback" && isSel && !isCorrect ? "✕" : letters[i]}
+                    </span>
+                    {loc(opt, lang)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* ── Feedback: food info card ── */}
           {phase === "feedback" && (
@@ -423,6 +523,8 @@ export default function Game({ config }: { config: GameConfig }) {
           total={Math.max(idx + (selected !== null ? 1 : 0), correct)}
           bestCombo={comboMultiplier(comboCount)}
           bestStreak={bestStreakRun}
+          discovered={discoveredCountRef.current}
+          countriesRun={Object.keys(statsRef.current.byCountry).length}
           config={config}
           fromLevel={fromLevel}
           onAgain={() => nav({ name: "game", config })}
@@ -474,8 +576,8 @@ function GeoRoute({ food, lang }: { food: NonNullable<ReturnType<typeof getFood>
   );
 }
 
-function Results({ score, correct, total, bestCombo, bestStreak, config, fromLevel, onAgain, onHome }: {
-  score: number; correct: number; total: number; bestCombo: number; bestStreak: number; config: GameConfig; fromLevel: number; onAgain: () => void; onHome: () => void;
+function Results({ score, correct, total, bestCombo, bestStreak, discovered, countriesRun, config, fromLevel, onAgain, onHome }: {
+  score: number; correct: number; total: number; bestCombo: number; bestStreak: number; discovered: number; countriesRun: number; config: GameConfig; fromLevel: number; onAgain: () => void; onHome: () => void;
 }) {
   const { t, profile } = useApp();
   const level = levelFromXp(profile.xp);

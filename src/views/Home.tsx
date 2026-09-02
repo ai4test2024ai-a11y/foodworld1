@@ -45,6 +45,8 @@ export default function Home() {
     { icon: "🏙️", mode: "city", k: "mode.city", d: "mode.cityDesc", accent: "#6aa8e8" },
     { icon: "⚡", mode: "speed", k: "mode.speed", d: "mode.speedDesc", accent: "var(--saffron)" },
     { icon: "💀", mode: "hardcore", k: "mode.hardcore", d: "mode.hardcoreDesc", accent: "var(--pom)" },
+    { icon: "⚔️", mode: "battle", k: "mode.battle", d: "mode.battleDesc", accent: "#e08a3c", hot: true },
+    { icon: "🔥", mode: "streak", k: "mode.streak", d: "mode.streakDesc", accent: "var(--pom)" },
     { icon: "🌐", mode: "world", k: "mode.world", d: "mode.worldDesc", accent: "var(--pist)" },
     { icon: "♾️", mode: "endless", k: "mode.endless", d: "mode.endlessDesc", accent: "var(--teal)" },
   ];

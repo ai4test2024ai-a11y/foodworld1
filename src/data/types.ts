@@ -55,7 +55,8 @@ export type QuestionType =
   | "meat"
   | "cuisine"
   | "region"
-  | "category";
+  | "category"
+  | "battle";
 
 export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 
@@ -63,6 +64,7 @@ export interface Question {
   key: string;
   type: QuestionType | "custom";
   foodId?: string;
+  foodIdB?: string;
   prompt: LocalizedText;
   options: LocalizedText[];
   correct: number;
@@ -82,6 +84,8 @@ export type GameMode =
   | "hardcore"
   | "journey"
   | "geo"
+  | "battle"
+  | "streak"
   | "daily";
 
 export interface GameConfig {
